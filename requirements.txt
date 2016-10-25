@@ -1,4 +1,4 @@
 connexion~=1.0
 requests~=2.11
 pyyaml~=3.12
-redis~=2.10
+flask-redis~=0.3.0

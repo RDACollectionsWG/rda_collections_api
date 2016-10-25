@@ -1,4 +1,4 @@
-
+from rda_collections_api import redis_store
 
 def collections_list():
     return {}
