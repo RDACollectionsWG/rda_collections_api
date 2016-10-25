@@ -120,7 +120,7 @@ definitions:
       synchronousActions: {description: 'whether or not actions such as update, delete
           occur synchronously or get queued for later action.', type: boolean}
     type: object
-host: api.example.org
+host: '{{ hostname }}:{{ port }}'
 info: {description: API Strawman for RDA Research Data Collections WG, title: RDA
     Collections API, version: 1.0.0}
 paths:

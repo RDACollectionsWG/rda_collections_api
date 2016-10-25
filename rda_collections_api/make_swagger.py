@@ -23,10 +23,12 @@ route_mapping = {
     ('/collections/{id}/ops/unionOf/{otherId}', 'get'): "{{ app_name }}.api.collections_ops.union",
 }
 
+o["host"] = "{{ hostname }}:{{ port }}"
+
 for path_key in o["paths"]:
     for method in o["paths"][path_key]:
         if (path_key, method) in route_mapping:
             o["paths"][path_key][method]["operationId"] = route_mapping[(path_key, method)]
 
-with open("collections_demo/swagger.yaml", "w") as sf:
+with open("rda_collections_api/swagger.yaml", "w") as sf:
     yaml.dump(o, sf)
