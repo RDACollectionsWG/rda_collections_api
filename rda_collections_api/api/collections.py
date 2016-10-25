@@ -9,7 +9,7 @@ def collections_list():
     members = redis_store.smembers("collections")
     ret = {"contents": []}
     for m in members:
-        cbody = redis_store.hgetall("collections/{}".format("string"))
+        cbody = redis_store.hgetall("collections/{}".format(id))
         ret["contents"].append(decode_redis(cbody))
     return ret
 
