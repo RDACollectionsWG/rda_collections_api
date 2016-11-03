@@ -7,5 +7,6 @@ setup(name='rda_collections_api',
       author='RDA Collections Working Group',
       author_email='rda-collection-wg@rda-groups.org',
       license='MIT',
-      packages=['rda_collections_api'],
+      packages=['rda_collections_api', 'rda_collections_api.api'],
+      include_package_data=True,
       zip_safe=False)
