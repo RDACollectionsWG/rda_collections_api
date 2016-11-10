@@ -3,15 +3,17 @@ definitions:
   CollectionCapabilities:
     description: Collection Capabilities
     properties:
+      appendsToEnd: {default: true, description: 'for an ordered collection, indicates
+          that new items are appended to the end rather than insertable at a specified,
+          possibly invalid, index points. Only valid if isOrdered is true.', type: boolean}
       isOrdered: {description: are the members in the collection ordered, type: boolean}
-      maxDepth: {default: 0, description: 'maximum depth to which collection members
-          can be expanded (and traversed in reverse??)', type: integer}
       membershipIsMutable: {description: is collection membership mutable (can members
           be added and removed), type: boolean}
       metadataIsMutable: {description: is collection metadata mutable (can the metadata
           of this collection be changed), type: boolean}
       supportsRoles: {description: does the collection support assigning roles to
           its members, type: boolean}
+    required: [isOrdered, supportsRoles, membershipIsMutable, metadataIsMutable]
     type: object
   CollectionItemMappingMetadata:
     description: metadata on an item which is available by mapping from capabilities
@@ -35,7 +37,7 @@ definitions:
       API)
     properties:
       owner:
-        description: list of owners identified by URI
+        description: list of owners, ideally identified by URI
         items: {type: string}
         type: array
     required: [owner]
@@ -106,54 +108,51 @@ definitions:
           results.', type: string}
     required: [contents]
     type: object
-  ServiceCapabilities:
-    description: Service Level Capabilities Metadata.
+  ServiceFeatures:
+    description: Service Level Features Metadata.
     properties:
       enforcesAccess: {description: whether or not the service enforces access controls,
         type: boolean}
-      pidProviderType: {description: 'URI which identifies the type of PID this collection
-          service assigns to new items, if any', type: string}
+      maxExpansionDepth: {default: 0, description: The maximum depth to which collection
+          members can be expanded. A value of 0 means that expansion is not supppoted.
+          A value of -1 means that the collections can be expanded to infinite depth.,
+        type: integer}
+      pidProviderType: {description: 'Should be either an entry from a Controlled
+          Vocabulary, maintained by the service end-point with unambigous PID service
+          names, or a registered data type indicating a PID service. ', type: string}
       ruleBasedGeneration: {description: whether or not the service allows rule-based
           generation of new collections, type: boolean}
       supportsPagination: {description: whether or not the service can paginate cursors,
         type: boolean}
       synchronousActions: {description: 'whether or not actions such as update, delete
           occur synchronously or get queued for later action.', type: boolean}
+    required: [pidProviderType, enforcesAccess, supportsPagination, synchronousActions,
+      ruleBasedGeneration, maxExpansionDepth]
     type: object
 host: '{{ hostname }}:{{ port }}'
 info: {description: API Strawman for RDA Research Data Collections WG, title: RDA
     Collections API, version: 1.0.0}
 paths:
-  /capabilities:
-    get:
-      description: This request returns the service-level capapibilities. Examples
-        of service-level capabilities might include whether or not the service supports
-        assignment of PIDs for collection members, whether it supports pagination
-        and cursors, whether it enforces  access controls, etc.
-      operationId: '{{ app_name }}.api.capabilities.get'
-      responses:
-        '200':
-          description: Service Level Capabilities
-          schema: {$ref: '#/definitions/ServiceCapabilities'}
-      summary: Gets the service-level capabilities.
-      tags: [Service]
   /collections:
     get:
       description: This request returns a list of the collections provided by this
-        service.  This may be a complete list, or if the service capabilities indicate
+        service.  This may be a complete list, or if the service features include
         support for pagination, the cursors in the response may be used to iterate
         backwards and forwards through pages of partial results. Query parameters
-        may be used to supply filtering criteria for the response.
+        may be used to supply filtering criteria for the response. When combining
+        filters of different types, the boolean AND will be used. When combining multiple
+        instances of filters of the same type, the boolean OR will be used.
       operationId: '{{ app_name }}.api.collections.collections_list'
       parameters:
-      - {description: Filter by type of collection model., in: query, name: filter_by_modeltype,
-        required: false, type: string}
-      - {description: Filter collections by data type of contained collection member.,
-        in: query, name: filter_by_datatype, required: false, type: string}
-      - {description: Filter collections by type of collection access type., in: query,
-        name: filter_by_accesstype, required: false, type: string}
-      - {description: Filter collections by owner of the collection, in: query, name: filter_by_owner,
+      - {collectionFormat: multi, description: Filter by type of collection model.,
+        in: query, name: filter_by_modeltype, required: false, type: string}
+      - {collectionFormat: multi, description: Filter collections by data type of
+          contained collection member., in: query, name: filter_by_datatype, required: false,
         type: string}
+      - {collectionFormat: multi, description: Filter collections by type of collection
+          access type., in: query, name: filter_by_accesstype, required: false, type: string}
+      - {collectionFormat: multi, description: Filter collections by owner of the
+          collection, in: query, name: filter_by_owner, type: string}
       - {description: Sort criteria, in: query, name: sort, required: false, type: string}
       responses:
         '200':
@@ -178,6 +177,8 @@ paths:
         '201':
           description: Successful creation
           schema: {$ref: '#/definitions/CollectionObject'}
+        '202': {description: 'Accepted create request. Empty response body. (For asyncrhonous
+            requests,  if supported by the service features).'}
         '400':
           description: Invalid Input. The collection properties were malformed or
             invalid.
@@ -193,14 +194,15 @@ paths:
     delete:
       description: This request deletes the collection idenified by the provided id
         from the collection store. The response may differ depending upon whether
-        or not the service capabilities indicate support for synchronous actions.
+        or not the service features include support for synchronous actions.
       operationId: '{{ app_name }}.api.collections.delete'
       parameters:
       - {description: identifier for the collection, in: path, name: id, required: true,
         type: string}
       responses:
         '200': {description: Successful deletion. Empty response body.}
-        '202': {description: Accepted deletion request. Empty response body.}
+        '202': {description: Accepted deletion request. Empty response body. (For
+            asynchronous requests if supported by service features.)}
         '401':
           description: Unauthorized. Request was not authorized.
           schema: {$ref: '#/definitions/Error'}
@@ -234,7 +236,7 @@ paths:
       description: This request updates the properties of the collection identified
         by the provided id. The updated collection properties must be supplied in
         the body of the request. The response may differ depending upon whether or
-        not the  service capabilities indicate support for syncrhonous actions.
+        not the  service features include support for syncrhonous actions.
       operationId: '{{ app_name }}.api.collections.put'
       parameters:
       - {description: Persistent identifier for the collection, in: path, name: id,
@@ -248,7 +250,8 @@ paths:
         '200':
           description: Successful update, returns the updated collection.
           schema: {$ref: '#/definitions/CollectionObject'}
-        '202': {description: Accepted update request. Empty response body.}
+        '202': {description: Accepted update request. Empty response body. (For asynchronous
+            requests if supported by service features.)}
         '400':
           description: Invalid Input. The collection properties were malformed or
             invalid.
@@ -291,28 +294,30 @@ paths:
   /collections/{id}/members:
     get:
       description: This request returns the list of members contained in a collection.  This
-        may be a complete list, or if the service capabilities indicate support for
-        pagination, the cursors in the response may be used to iterate backwards and
-        forwards through pages of partial results. Query parameters may be used to
-        supply filtering criteria for the response.
+        may be a complete list, or if the service features include support for pagination,
+        the cursors in the response may be used to iterate backwards and forwards
+        through pages of partial results. Query parameters may be used to supply filtering
+        criteria for the response. When combining filters of different types, the
+        boolean AND will be used. When combining multiple instances of filters of
+        the same type, the boolean OR will be used.
       operationId: '{{ app_name }}.api.members.members_list'
       parameters:
       - {description: Identifier for the collection, in: path, name: id, required: true,
         type: string}
-      - {description: Filter by datatype of collection member, in: query, name: filter_by_datatype,
-        required: false, type: string}
-      - {description: Filter by pid type of the collection member, in: query, name: filter_by_pidtype,
-        required: false, type: string}
-      - {description: Filter by access type of collection member, in: query, name: filter_by_accesstype,
-        required: false, type: string}
-      - {description: Filter by the role of a collection memeber, in: query, name: filter_by_role,
-        required: false, type: string}
-      - {description: Filter by the index of the item in the collection (only if ordered),
-        in: query, name: filter_by_index, type: integer}
+      - {collectionFormat: multi, description: Filter by datatype of collection member,
+        in: query, name: filter_by_datatype, required: false, type: string}
+      - {collectionFormat: multi, description: Filter by pid type of the collection
+          member, in: query, name: filter_by_pidtype, required: false, type: string}
+      - {collectionFormat: multi, description: Filter by access type of collection
+          member, in: query, name: filter_by_accesstype, required: false, type: string}
+      - {collectionFormat: multi, description: Filter by the role of a collection
+          memeber, in: query, name: filter_by_role, required: false, type: string}
+      - {collectionFormat: multi, description: Filter by the index of the item in
+          the collection (only if ordered), in: query, name: filter_by_index, type: integer}
       - {description: cursor for iterating a prior response to this query, in: query,
         name: cursor, type: string}
       - {description: expand members which are collections to this depth. may not
-          exceed maxDepth capability for the collection, in: query, name: expandDepth,
+          exceed maxExpansionDepth feature setting for the service., in: query, name: expandDepth,
         required: false, type: integer}
       responses:
         '200':
@@ -332,8 +337,8 @@ paths:
       tags: [Members]
     post:
       description: 'This request adds a new member item to a collection. If the service
-        capabilities indicate that the service supports PID assignment to member items,
-        then if no id is supplied for the item it  will be assigned automatically.  '
+        features include support for PID assignment to member items, then if no id
+        is supplied for the item it  will be assigned automatically.  '
       operationId: '{{ app_name }}.api.members.post'
       parameters:
       - {description: Identifier for the collection, in: path, name: id, required: true,
@@ -348,6 +353,8 @@ paths:
         '201':
           description: Successful creation
           schema: {$ref: '#/definitions/MemberItem'}
+        '202': {description: 'Accepted add request. Empty response body. (For asyncrhonous
+            requests,  if supported by the service features).'}
         '400': {description: Invalid Request. Indicates that member properties were
             incorrect or invalid in  some way.}
         '401':
@@ -365,8 +372,8 @@ paths:
   /collections/{id}/members/{mid}:
     delete:
       description: Removes a member item from a collection. The response may differ
-        depending upon whether or not the  service capabilities indicate support for
-        synchronous actions.
+        depending upon whether or not the  service features include support for asynchronous
+        actions.
       operationId: '{{ app_name }}.api.members.delete'
       parameters:
       - {description: Persistent identifier for the collection, in: path, name: id,
@@ -375,7 +382,8 @@ paths:
         type: string}
       responses:
         '200': {description: Successful removal. Empty response body.}
-        '202': {description: Accepted request. Empty response body.}
+        '202': {description: 'Accepted request. Empty response body. (For asynchronous
+            requests, if supported by service features.)'}
         '401':
           description: Unauthorized. Request was not authorized.
           schema: {$ref: '#/definitions/Error'}
@@ -416,8 +424,8 @@ paths:
     put:
       description: This request updates the properties of a collection member item.  The
         updated member  properties must be supplied in the body of the request. The
-        response may differ  depending upon whether or not the  service capabilities
-        indicate support  for synchronous actions.
+        response may differ  depending upon whether or not the  service features include
+        support  for asynchronous actions.
       operationId: '{{ app_name }}.api.members.put'
       parameters:
       - {description: Identifier for the collection, in: path, name: id, required: true,
@@ -434,7 +442,8 @@ paths:
           description: Successful update. The updated member item is returned in the
             response.
           schema: {$ref: '#/definitions/MemberItem'}
-        '202': {description: Accepted update request. Empty response body.}
+        '202': {description: Accepted update request. Empty response body. (For asynchronous
+            requests if supported by service features.)}
         '400':
           description: Invalid Input
           schema: {$ref: '#/definitions/Error'}
@@ -454,6 +463,32 @@ paths:
       summary: Update the properties of a collection member item.
       tags: [Members]
   /collections/{id}/members/{mid}/properties/{property}:
+    delete:
+      description: This request deletes a specific named property of a specific member
+        item from a collection
+      operationId: '{{ app_name }}.api.members.delete_property'
+      parameters:
+      - {description: Identifier for the collection, in: path, name: id, required: true,
+        type: string}
+      - {description: Identifier for the collection member item., in: path, name: mid,
+        required: true, type: string}
+      - {description: the name of a property to update, in: path, name: property,
+        required: true, type: string}
+      responses:
+        '200': {description: Successful deletion. Empty response body.}
+        '202': {description: 'Accepted delete request. Empty response body. (For asyncrhonous
+            requests, if supported by service features.)'}
+        '401':
+          description: Unauthorized. Request was not authorized.
+          schema: {$ref: '#/definitions/Error'}
+        '403': {description: 'Forbidden. May be returned, for example, if a request
+            was made to delete a required metadata property or update a static item.'}
+        '404':
+          description: Not found. The requested collection or member item was not
+            found.
+          schema: {$ref: '#/definitions/Error'}
+      summary: Delete a named property of a member item in a collection
+      tags: [Members]
     get:
       description: This request retrieves a specific named property of a specific
         member item from a collection
@@ -478,13 +513,47 @@ paths:
           schema: {$ref: '#/definitions/Error'}
       summary: Get a named property of a member item in a collection
       tags: [Members]
+    put:
+      description: This request updates a specific named property of a specific member
+        item from a collection
+      operationId: '{{ app_name }}.api.members.put_property'
+      parameters:
+      - {description: Identifier for the collection, in: path, name: id, required: true,
+        type: string}
+      - {description: Identifier for the collection member item., in: path, name: mid,
+        required: true, type: string}
+      - {description: the name of a property to update, in: path, name: property,
+        required: true, type: string}
+      - description: new property value
+        in: body
+        name: content
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: Successful update. The updated member item is returned in the
+            response.
+          schema: {$ref: '#/definitions/MemberItem'}
+        '202': {description: 'Accepted update request. Empty response body. (For asynchronous
+            requests, if supported by service features.)'}
+        '401':
+          description: Unauthorized. Request was not authorized.
+          schema: {$ref: '#/definitions/Error'}
+        '403': {description: 'Forbidden. May be returned, for example, if a request
+            was made to update a static item.'}
+        '404':
+          description: Not found. The requested collection or member item was not
+            found.
+          schema: {$ref: '#/definitions/Error'}
+      summary: Update a named property of a member item in a collection
+      tags: [Members]
   /collections/{id}/ops/intersectionOf/{otherId}:
     get:
       description: This request returns a resultset containing the members at the
-        intersection of two collections. If the service capabilities indicate support
-        for pagination, a cursor may be supplied to iterate backwards and forwards
-        through paged results from prior executions of this query. The response may
-        be an empty set.
+        intersection of two collections. If the service features include support for
+        pagination, a cursor may be supplied to iterate backwards and forwards through
+        paged results from prior executions of this query. The response may be an
+        empty set.
       operationId: '{{ app_name }}.api.collections_ops.intersection'
       parameters:
       - {description: Identifier for the first collection in the operation, in: path,
@@ -514,9 +583,9 @@ paths:
       description: This request accepts as input the complete or partial properties
         of a member object and returns a ResultSet containing any objects which were
         deemed to 'match' the supplied properties among the members of the identified
-        collection. If the service capabilities indicate support for pagination, a
-        cursor may be supplied to iterate backwards and forwards through paged results
-        from prior executions of this query.
+        collection. If the service features include support for pagination, a cursor
+        may be supplied to iterate backwards and forwards through paged results from
+        prior executions of this query.
       operationId: '{{ app_name }}.api.collections_ops.matching_members'
       parameters:
       - {description: identifier for the collection, in: path, name: id, required: true,
@@ -548,10 +617,9 @@ paths:
   /collections/{id}/ops/unionOf/{otherId}:
     get:
       description: This request returns a resultset containing the members at the
-        union of two collections. If the service capabilities indicate support for
-        pagination, a cursor may be supplied to iterate backwards and forwards through
-        paged results from prior executions of this query. The response may be an
-        empty set.
+        union of two collections. If the service features include support for pagination,
+        a cursor may be supplied to iterate backwards and forwards through paged results
+        from prior executions of this query. The response may be an empty set.
       operationId: '{{ app_name }}.api.collections_ops.union'
       parameters:
       - {description: Identifier for the first collection in the operation, in: path,
@@ -576,6 +644,19 @@ paths:
       - oauth: [read]
       summary: Retrieve the union of two collections
       tags: [Collections]
+  /features:
+    get:
+      description: This request returns the service-level features. Examples of service-level
+        features might include whether or not the service supports assignment of PIDs
+        for collection members, whether it supports pagination and cursors, whether
+        it enforces  access controls, etc.
+      operationId: '{{ app_name }}.api.features.get'
+      responses:
+        '200':
+          description: Service Level Features
+          schema: {$ref: '#/definitions/ServiceFeatures'}
+      summary: Gets the service-level features.
+      tags: [Service]
 produces: [application/json]
 schemes: [https]
 securityDefinitions:

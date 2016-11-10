@@ -33,3 +33,15 @@ def delete(id, mid):
 
 def get_property(id, mid, property):
     return decode_redis(redis_store.hget("collections/{}/members/{}".format(id,mid), property))
+
+def post_property(id, mid, property):
+    raise NotImplemented
+    return {}
+
+def put_property(id, mid, property):
+    raise NotImplemented
+    return {}
+
+def delete_property(id, mid, property):
+    raise NotImplemented
+    return {}

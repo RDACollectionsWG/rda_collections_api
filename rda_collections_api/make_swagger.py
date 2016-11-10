@@ -5,7 +5,7 @@ r = requests.get("https://raw.githubusercontent.com/RDACollectionsWG/apidocs/mas
 o = yaml.load(r.content)
 
 route_mapping = {
-    ('/capabilities', 'get'): "{{ app_name }}.api.capabilities.get",
+    ('/features', 'get'): "{{ app_name }}.api.features.get",
     ('/collections', 'get'): "{{ app_name }}.api.collections.collections_list",
     ('/collections', 'post'): "{{ app_name }}.api.collections.post",
     ('/collections/{id}', 'delete'): "{{ app_name }}.api.collections.delete",
@@ -18,6 +18,9 @@ route_mapping = {
     ('/collections/{id}/members/{mid}', 'get'): "{{ app_name }}.api.members.get",
     ('/collections/{id}/members/{mid}', 'put'): "{{ app_name }}.api.members.put",
     ('/collections/{id}/members/{mid}/properties/{property}', 'get'): "{{ app_name }}.api.members.get_property",
+    ('/collections/{id}/members/{mid}/properties/{property}', 'put'): "{{ app_name }}.api.members.put_property",
+    ('/collections/{id}/members/{mid}/properties/{property}', 'gost'): "{{ app_name }}.api.members.post_property",
+    ('/collections/{id}/members/{mid}/properties/{property}', 'delete'): "{{ app_name }}.api.members.delete_property",
     ('/collections/{id}/ops/intersectionOf/{otherId}', 'get'): "{{ app_name }}.api.collections_ops.intersection",
     ('/collections/{id}/ops/matchingMembers', 'post'): "{{ app_name }}.api.collections_ops.matching_members",
     ('/collections/{id}/ops/unionOf/{otherId}', 'get'): "{{ app_name }}.api.collections_ops.union",
@@ -29,6 +32,8 @@ for path_key in o["paths"]:
     for method in o["paths"][path_key]:
         if (path_key, method) in route_mapping:
             o["paths"][path_key][method]["operationId"] = route_mapping[(path_key, method)]
+        else:
+            print("missing path", (path_key, method))
 
 with open("rda_collections_api/swagger.yaml", "w") as sf:
     yaml.dump(o, sf)
