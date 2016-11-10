@@ -1,0 +1,16 @@
+version: "2"
+services:
+  redis:
+    image: "redis:alpine"
+    volumes:
+      - "redis:/var/lib/redis/data"
+    ports:
+      - "6379:6379"
+  web:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+volumes:
+  redis:
