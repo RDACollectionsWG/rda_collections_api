@@ -21,9 +21,11 @@ route_mapping = {
     ('/collections/{id}/members/{mid}/properties/{property}', 'put'): "{{ app_name }}.api.members.put_property",
     ('/collections/{id}/members/{mid}/properties/{property}', 'gost'): "{{ app_name }}.api.members.post_property",
     ('/collections/{id}/members/{mid}/properties/{property}', 'delete'): "{{ app_name }}.api.members.delete_property",
-    ('/collections/{id}/ops/intersectionOf/{otherId}', 'get'): "{{ app_name }}.api.collections_ops.intersection",
-    ('/collections/{id}/ops/matchingMembers', 'post'): "{{ app_name }}.api.collections_ops.matching_members",
-    ('/collections/{id}/ops/unionOf/{otherId}', 'get'): "{{ app_name }}.api.collections_ops.union",
+    ('/collections/{id}/ops/flatten', 'get'): "{{ app_name }}.api.collections_ops.flatten",
+    ('/collections/{id}/ops/findMatch', 'post'): "{{ app_name }}.api.collections_ops.matching_members",
+    ('/collections/{id}/ops/intersection/{otherId}', 'get'): "{{ app_name }}.api.collections_ops.intersection",
+    ('/collections/{id}/ops/union/{otherId}', 'get'): "{{ app_name }}.api.collections_ops.union",
+
 }
 
 o["host"] = "{{ hostname }}:{{ port }}"

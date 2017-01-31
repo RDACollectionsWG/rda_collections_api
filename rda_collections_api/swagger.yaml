@@ -1,79 +1,96 @@
 basePath: /v1
 definitions:
   CollectionCapabilities:
-    description: Collection Capabilities
+    description: Capabilities define the set of actions that are supported by a collection.
     properties:
-      appendsToEnd: {default: true, description: 'for an ordered collection, indicates
+      appendsToEnd: {default: true, description: 'For an ordered collection, indicates
           that new items are appended to the end rather than insertable at a specified,
           possibly invalid, index points. Only valid if isOrdered is true.', type: boolean}
-      isOrdered: {description: are the members in the collection ordered, type: boolean}
-      membershipIsMutable: {description: is collection membership mutable (can members
-          be added and removed), type: boolean}
-      metadataIsMutable: {description: is collection metadata mutable (can the metadata
-          of this collection be changed), type: boolean}
-      supportsRoles: {description: does the collection support assigning roles to
-          its members, type: boolean}
-    required: [isOrdered, supportsRoles, membershipIsMutable, metadataIsMutable]
+      isOrdered: {default: false, description: 'Identifies whether the collection
+          items are kept in a consistent, meaningful order. The exact nature of the
+          ordering is not specified, but see also appendsToEnd property.', type: boolean}
+      maxLength: {default: -1, description: The maximum length of the Collection.
+          -1 means length is not restricted., type: integer}
+      membershipIsMutable: {default: true, description: Indicates whether collection
+          membership mutable (i.e. whether members can be added and removed), type: boolean}
+      metadataIsMutable: {default: true, description: Indicates whether collection
+          metadata is mutable (i.e. can the metadata of this collection be changed),
+        type: boolean}
+      restrictedToType: {description: 'If specified, indicates that the collection
+          is made up of homogenous items of the specified type. Type should be specified
+          using the PID of a registered Data Type or a controlled vocabulary.', type: string}
+      supportsRoles: {default: false, description: Indicates whether the collection
+          supports assigning roles to its member items. Available roles are determined
+          by the Collection Model type., type: boolean}
+    required: [isOrdered, appendsToEnd, supportsRoles, membershipIsMutable, metadataIsMutable,
+      restrictedToType, maxLength]
     type: object
   CollectionItemMappingMetadata:
     description: metadata on an item which is available by mapping from capabilities
     properties:
+      dateAdded: {description: The date the item was added to the collection., format: date-time,
+        type: string}
       index: {description: position of the item in the collection. Only available
-          if the Collection isOrdered per its capabilities, type: integer}
-      role: {description: URI of the role that applies to this item. Only available
-          if the collection supportsRoles per its capabilities, type: string}
+          if the Collection isOrdered per its capabilities., type: integer}
+      role: {description: The ole that applies to this item. Only available if the
+          collection supportsRoles per its capabilities. A Controlled Vocabulary should
+          be used., type: string}
     type: object
   CollectionObject:
-    description: A collection object.
+    description: Defines the schema for a collection object.
     properties:
       capabilities: {$ref: '#/definitions/CollectionCapabilities'}
-      description: {description: Descriptive metadata about the collection, type: object}
-      id: {description: Identifier for the collection., type: string}
+      description: {description: 'Descriptive metadata about the collection.  The
+          properties available for this object are dependent upon the description
+          ontology used, as define in the collection properties.', type: object}
+      id: {description: Identifier for the collection. This is ideally a PID., type: string}
       properties: {$ref: '#/definitions/CollectionProperties'}
     required: [id, capabilities, properties]
     type: object
-  CollectionOwnership:
-    description: Ownership Metadata about the Collection (from the purview of the
-      API)
-    properties:
-      owner:
-        description: list of owners, ideally identified by URI
-        items: {type: string}
-        type: array
-    required: [owner]
-    type: object
+  CollectionOperations:
+    description: Valid operation names.
+    enum: [findMatch, intersection, union, flatten]
+    type: string
   CollectionProperties:
     description: Functional Properties of the Collection
     properties:
-      descriptionOntology: {description: URI of an ontology used for descriptive metadata,
+      descriptionOntology: {description: Identifies the ontology used for descriptive
+          metadata. Implementation is expected to supply the URI of a controlled vocabulary.,
         type: string}
-      hasAccessRestrictions: {description: indicates whether the collection is fully
-          open or has access restrictions, type: boolean}
-      license: {description: URI of the license that applies to the collection, type: string}
+      hasAccessRestrictions: {default: false, description: 'Indicates whether the
+          collection is fully open or has access restrictions. ', type: boolean}
+      license: {description: 'Indicates the license that applies to the Collection.
+          Implementation is expected to use a controlled vocabulary, stable URIs or
+          PIDs of registered data types. ', type: string}
       memberOf:
-        description: list of collection identifiers to which this collection itself
-          belongs. only possible if maxDepth capability > 0
+        default: []
+        description: If provided, this is a list of collection identifiers to which
+          this collection itself belongs. This property is only meaningful if the
+          service features supports a  maximumExpansionDepth > 0.
         items: {type: string}
         type: array
-      modelType: {description: URI of the collection modeltype that applies to the
-          collection, type: string}
-      ownership: {$ref: '#/definitions/CollectionOwnership'}
-    required: [ownership, hasAccessRestrictions]
+      modelType: {description: 'Identifies the model that the collection adheres to.
+          Iimplementation is expected to use a controlled vocabulary, or PIDs of registered
+          data types. ', type: string}
+      ownership: {description: Indicates the owner of the Collection. Implementation
+          is expected to use a controlled vocabulary or PIDs., type: string}
+    required: [ownership, license, modelType, hasAccessRestrictions, descriptionOntology]
     type: object
   CollectionResultSet:
     description: A resultset containing a potentially iterable list of Collections
-      Objects.
+      Objects. This is the  schema for the response to any request which retrieves
+      collection items.
     properties:
       contents:
         description: list of Collection Objects returned in response to a query
         items: {$ref: '#/definitions/CollectionObject'}
         type: array
       next_cursor: {description: 'If the service supports pagination, and the resultset
-          is paginated, cursor which can be used to retrieve the next page in the
-          results.', type: string}
+          is paginated, this will be a cursor which can be used to retrieve the next
+          page in the results.', type: string}
       prev_cursor: {description: 'If the service supports pagination, and the resultset
-          is paginated, cursor which can be used to retrieve the next page in the
-          results.', type: string}
+          is paginated, this will be a cursor which can be used to retrieve the next
+          page in the results.', type: string}
     required: [contents]
     type: object
   Error:
@@ -94,40 +111,72 @@ definitions:
     required: [id, location]
     type: object
   MemberResultSet:
-    description: A resultset containing a potentially iterable list of Member Items
+    description: A resultset containing a potentially iterable list of Member Items.
+      This is the schema for the response to any request which retrieves collection
+      members.
     properties:
       contents:
         description: list of Member Items returned in responses to a query
         items: {$ref: '#/definitions/MemberItem'}
         type: array
       next_cursor: {description: 'If the service supports pagination, and the resultset
-          is paginated, cursor which can be used to retrieve the next page in the
-          results.', type: string}
+          is paginated, this will be cursor which can be used to retrieve the next
+          page in the results.', type: string}
       prev_cursor: {description: 'If the service supports pagination, and the resultset
-          is paginated, cursor which can be used to retrieve the next page in the
-          results.', type: string}
+          is paginated, this will be cursor which can be used to retrieve the next
+          page in the results.', type: string}
     required: [contents]
     type: object
   ServiceFeatures:
-    description: Service Level Features Metadata.
+    description: Describes the properties of the response to the Service /features
+      request.
     properties:
-      enforcesAccess: {description: whether or not the service enforces access controls,
-        type: boolean}
+      asynchronousActions: {default: false, description: 'Indicates whether or not
+          actions such as update, delete occur synchronously or may be queued for
+          later action.', type: boolean}
+      collectionPidProviderType: {description: 'Identifies the PID provider service
+          used by the Collection Service to create new PIDs for new Collection. Required
+          if providesCollectionPids is true, otherwise this property is optional and
+          has no meaning. Recommended to use a Controlled Vocabulary or registered
+          Data Types', type: string}
+      enforcesAccess: {default: false, description: Indicates whether or not the service
+          enforces access controls on requests. Implementation details access are
+          left up to the implementor. This flag simply states whether or not the Service
+          enforces access., type: boolean}
       maxExpansionDepth: {default: 0, description: The maximum depth to which collection
           members can be expanded. A value of 0 means that expansion is not supppoted.
           A value of -1 means that the collections can be expanded to infinite depth.,
         type: integer}
-      pidProviderType: {description: 'Should be either an entry from a Controlled
-          Vocabulary, maintained by the service end-point with unambigous PID service
-          names, or a registered data type indicating a PID service. ', type: string}
-      ruleBasedGeneration: {description: whether or not the service allows rule-based
-          generation of new collections, type: boolean}
-      supportsPagination: {description: whether or not the service can paginate cursors,
-        type: boolean}
-      synchronousActions: {description: 'whether or not actions such as update, delete
-          occur synchronously or get queued for later action.', type: boolean}
-    required: [pidProviderType, enforcesAccess, supportsPagination, synchronousActions,
-      ruleBasedGeneration, maxExpansionDepth]
+      providesCollectionPids: {default: false, description: 'Indicates whether this
+          services provides collection PIDs for new collections. If this is false,
+          requests for new Collections must supply the PID for the collection. If
+          this is true, the Service will use its default PID provider (as advertised
+          via the collectionPidProviderType feature) to create new PIDs to assign
+          to new Collections.', type: boolean}
+      providesVersioning: {default: false, description: Indicates whether the service
+          offers support for versioning of Collections. Implementation details are
+          left up to the implementor., type: boolean}
+      ruleBasedGeneration: {description: Indicates whether or not the service allows
+          rule-based generation of new collections., type: boolean}
+      supportedCollectionOperations:
+        default: []
+        description: List of collection-level set operations that are supported by
+          this service.
+        items:
+        - {$ref: '#/definitions/CollectionOperations'}
+        type: array
+      supportedModelTypes:
+        default: []
+        description: List of collection model types supported by this service.  Recommended
+          to use a Controlled Vocabulary or registered Data Types
+        items:
+        - {type: string}
+        type: array
+      supportsPagination: {default: false, description: Indicates whether or not the
+          service offers pagination (via cursors) of response data., type: boolean}
+    required: [providesCollectionPids, enforcesAccess, supportsPagination, asynchronousActions,
+      ruleBasedGeneration, maxExpansionDepth, providesVersioning, supportedCollectionOperations,
+      supportedModelTypes]
     type: object
 host: '{{ hostname }}:{{ port }}'
 info: {description: API Strawman for RDA Research Data Collections WG, title: RDA
@@ -144,16 +193,14 @@ paths:
         instances of filters of the same type, the boolean OR will be used.
       operationId: '{{ app_name }}.api.collections.collections_list'
       parameters:
-      - {collectionFormat: multi, description: Filter by type of collection model.,
-        in: query, name: filter_by_modeltype, required: false, type: string}
-      - {collectionFormat: multi, description: Filter collections by data type of
-          contained collection member., in: query, name: filter_by_datatype, required: false,
-        type: string}
-      - {collectionFormat: multi, description: Filter collections by type of collection
-          access type., in: query, name: filter_by_accesstype, required: false, type: string}
-      - {collectionFormat: multi, description: Filter collections by owner of the
-          collection, in: query, name: filter_by_owner, type: string}
-      - {description: Sort criteria, in: query, name: sort, required: false, type: string}
+      - {collectionFormat: multi, description: Filter response by the modelType property
+          of the collection., in: query, name: f_modelType, required: false, type: string}
+      - {collectionFormat: multi, description: Filter response by the data type of
+          contained collection member. A collection will meet this requirement if
+          any of its members are of the requested type., in: query, name: f_memberType,
+        required: false, type: string}
+      - {collectionFormat: multi, description: Filter response by the ownership property
+          of the collection, in: query, name: f_ownership, type: string}
       responses:
         '200':
           description: A resultset containing a list of collection objects.
@@ -304,16 +351,16 @@ paths:
       parameters:
       - {description: Identifier for the collection, in: path, name: id, required: true,
         type: string}
-      - {collectionFormat: multi, description: Filter by datatype of collection member,
-        in: query, name: filter_by_datatype, required: false, type: string}
-      - {collectionFormat: multi, description: Filter by pid type of the collection
-          member, in: query, name: filter_by_pidtype, required: false, type: string}
-      - {collectionFormat: multi, description: Filter by access type of collection
-          member, in: query, name: filter_by_accesstype, required: false, type: string}
-      - {collectionFormat: multi, description: Filter by the role of a collection
-          memeber, in: query, name: filter_by_role, required: false, type: string}
-      - {collectionFormat: multi, description: Filter by the index of the item in
-          the collection (only if ordered), in: query, name: filter_by_index, type: integer}
+      - {collectionFormat: multi, description: Filter response to members matching
+          the requested datatype., in: query, name: f_datatype, required: false, type: string}
+      - {collectionFormat: multi, description: Filter response to members who are
+          assigned the requested role. (Only if the collection capability supportsRoles
+          is true)., in: query, name: f_role, required: false, type: string}
+      - {collectionFormat: multi, description: Filter response to the members assigned
+          the requested index. (Only if the collection capability isOrdered is true).,
+        in: query, name: f_index, required: false, type: integer}
+      - {description: Filter response to the membered added on the requestd datetime.,
+        format: date-time, in: query, name: f_dateAdded, required: false, type: string}
       - {description: cursor for iterating a prior response to this query, in: query,
         name: cursor, type: string}
       - {description: expand members which are collections to this depth. may not
@@ -547,38 +594,7 @@ paths:
           schema: {$ref: '#/definitions/Error'}
       summary: Update a named property of a member item in a collection
       tags: [Members]
-  /collections/{id}/ops/intersectionOf/{otherId}:
-    get:
-      description: This request returns a resultset containing the members at the
-        intersection of two collections. If the service features include support for
-        pagination, a cursor may be supplied to iterate backwards and forwards through
-        paged results from prior executions of this query. The response may be an
-        empty set.
-      operationId: '{{ app_name }}.api.collections_ops.intersection'
-      parameters:
-      - {description: Identifier for the first collection in the operation, in: path,
-        name: id, required: true, type: string}
-      - {description: Identifier for the second collection in the operation, in: path,
-        name: otherId, required: true, type: string}
-      - {description: '-> If the service supports pagination and a cursor was returned
-          in a prior response to this query, this can be used to requeste a particular
-          page of the results.', in: query, name: cursor, type: string}
-      responses:
-        '200':
-          description: A resultset containing the intersection of member items from
-            the two collections.
-          schema: {$ref: '#/definitions/MemberResultSet'}
-        '401':
-          description: Unauthorized. Request was not authorized.
-          schema: {$ref: '#/definitions/Error'}
-        '404':
-          description: One or both of the requested collections was not found.
-          schema: {$ref: '#/definitions/Error'}
-      security:
-      - oauth: [read]
-      summary: Retrieve the members at the intersection of two collections
-      tags: [Collections]
-  /collections/{id}/ops/matchingMembers:
+  /collections/{id}/ops/findMatch:
     post:
       description: This request accepts as input the complete or partial properties
         of a member object and returns a ResultSet containing any objects which were
@@ -614,7 +630,64 @@ paths:
       summary: Find member objects in a collection which match the supplied member
         object
       tags: [Collections]
-  /collections/{id}/ops/unionOf/{otherId}:
+  /collections/{id}/ops/flatten:
+    get:
+      description: This request returns a resultset which is a flattened representation
+        of a collection of collections into a single collection.
+      operationId: '{{ app_name }}.api.collections_ops.flatten'
+      parameters:
+      - {description: Identifier for the collection to be flattened, in: path, name: id,
+        required: true, type: string}
+      - {description: 'If the service supports pagination and a cursor was returned
+          in a prior response to this query, this can be used to requeste a particular
+          page of the results.', in: query, name: cursor, type: string}
+      responses:
+        '200':
+          description: A resultset containing the union of member items from the two
+            collections
+          schema: {$ref: '#/definitions/MemberResultSet'}
+        '401':
+          description: Unauthorized. Request was not authorized.
+          schema: {$ref: '#/definitions/Error'}
+        '404':
+          description: One or both of the requested collections was not found.
+          schema: {$ref: '#/definitions/Error'}
+      security:
+      - oauth: [read]
+      summary: Flattens the collection
+      tags: [Collections]
+  /collections/{id}/ops/intersection/{otherId}:
+    get:
+      description: This request returns a resultset containing the members at the
+        intersection of two collections. If the service features include support for
+        pagination, a cursor may be supplied to iterate backwards and forwards through
+        paged results from prior executions of this query. The response may be an
+        empty set.
+      operationId: '{{ app_name }}.api.collections_ops.intersection'
+      parameters:
+      - {description: Identifier for the first collection in the operation, in: path,
+        name: id, required: true, type: string}
+      - {description: Identifier for the second collection in the operation, in: path,
+        name: otherId, required: true, type: string}
+      - {description: 'If the service supports pagination and a cursor was returned
+          in a prior response to this query, this can be used to requeste a particular
+          page of the results.', in: query, name: cursor, type: string}
+      responses:
+        '200':
+          description: A resultset containing the intersection of member items from
+            the two collections.
+          schema: {$ref: '#/definitions/MemberResultSet'}
+        '401':
+          description: Unauthorized. Request was not authorized.
+          schema: {$ref: '#/definitions/Error'}
+        '404':
+          description: One or both of the requested collections was not found.
+          schema: {$ref: '#/definitions/Error'}
+      security:
+      - oauth: [read]
+      summary: Retrieve the members at the intersection of two collections
+      tags: [Collections]
+  /collections/{id}/ops/union/{otherId}:
     get:
       description: This request returns a resultset containing the members at the
         union of two collections. If the service features include support for pagination,
@@ -626,7 +699,7 @@ paths:
         name: id, required: true, type: string}
       - {description: Identifier for the second collection in the operation, in: path,
         name: otherId, required: true, type: string}
-      - {description: '-> If the service supports pagination and a cursor was returned
+      - {description: 'If the service supports pagination and a cursor was returned
           in a prior response to this query, this can be used to requeste a particular
           page of the results.', in: query, name: cursor, type: string}
       responses:
