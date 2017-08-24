@@ -19,7 +19,7 @@ route_mapping = {
     ('/collections/{id}/members/{mid}', 'put'): "{{ app_name }}.api.members.put",
     ('/collections/{id}/members/{mid}/properties/{property}', 'get'): "{{ app_name }}.api.members.get_property",
     ('/collections/{id}/members/{mid}/properties/{property}', 'put'): "{{ app_name }}.api.members.put_property",
-    ('/collections/{id}/members/{mid}/properties/{property}', 'gost'): "{{ app_name }}.api.members.post_property",
+    ('/collections/{id}/members/{mid}/properties/{property}', 'post'): "{{ app_name }}.api.members.post_property",
     ('/collections/{id}/members/{mid}/properties/{property}', 'delete'): "{{ app_name }}.api.members.delete_property",
     ('/collections/{id}/ops/flatten', 'get'): "{{ app_name }}.api.collections_ops.flatten",
     ('/collections/{id}/ops/findMatch', 'post'): "{{ app_name }}.api.collections_ops.matching_members",
